@@ -12,12 +12,10 @@ typealias FirestoreCompletion = (Error?) -> Void
 
 struct UserService {
     
-    /// fetches only one user, the logged in user.
-    static func fetchUser(completion: @escaping(User) -> Void) {
+    /// fetches only one user, based on the userID we put in we grab that specific users data, whether its current user, nor another user thats commented or liked a post .
+    static func fetchUser(withUser userID: String, completion: @escaping(User) -> Void) {
         
-        guard let currentUser = Auth.auth().currentUser?.uid else {return}
-        
-        COLLECTION_USERS.document(currentUser).getDocument { snapshot, error  in
+        COLLECTION_USERS.document(userID).getDocument { snapshot, error  in
             
             // dot data represents the document in a dictionary format 
             guard let dictionary = snapshot?.data() else {return}
@@ -54,8 +52,8 @@ struct UserService {
             
             // we add this to the list of users that are following our current user.
             COLLECTION_FOLLOWERS.document(uid).collection("user-followers").document(currentUser).setData([:], completion: completion)
+            
         }
-        
         
     }
     
@@ -67,6 +65,7 @@ struct UserService {
         COLLECTION_FOLLOWING.document(currentUser).collection("user-following").document(uid).delete { error in
             
             COLLECTION_FOLLOWERS.document(uid).collection("user-followers").document(currentUser).delete(completion: completion)
+            
         }
         
     }
@@ -97,9 +96,17 @@ struct UserService {
                 
                 let following = snapshot?.documents.count ?? 0
                 
-                let stats = UserStats(followers: followers, following: following)
+                COLLECTION_POSTS.whereField("ownerUid", isEqualTo: uid).getDocuments { (snapshot, error) in
+                    
+                    let posts = snapshot?.documents.count ?? 0
+                    
+                    let stats = UserStats(followers: followers, following: following, posts: posts)
+                    
+                    completion(stats)
+                    
+                }
                 
-                completion(stats)
+                
             }
         }
         

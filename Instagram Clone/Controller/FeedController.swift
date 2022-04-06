@@ -16,7 +16,14 @@ class FeedController: UICollectionViewController {
     
     private var user: User?
     
-    private var posts = [Posts]()
+    // everytime something inside the post array gets modified, it gonna reload the collection view data for us.
+    private var posts = [Posts]() {
+        didSet{collectionView.reloadData() }
+        
+    }
+    
+     var post: Posts?
+     let refresher = UIRefreshControl()
     
     
     //MARK: - LIFECYCLE
@@ -38,44 +45,65 @@ class FeedController: UICollectionViewController {
         collectionView.backgroundColor = .white
         collectionView.register(FeedCell.self, forCellWithReuseIdentifier: reuseIdentifier)
         
-        navigationItem.leftBarButtonItem = UIBarButtonItem(title: "log out", style: .plain, target:self, action:  #selector(handleLogout))
+        // if post is nill then we show the logout button else we show back button.
+        if post == nil {
+            navigationItem.leftBarButtonItem = UIBarButtonItem(title: "log out", style: .plain, target:self, action:  #selector(handleLogout))
+        }
         
-        // creates an instance of refreshControl
-        let refresher = UIRefreshControl()
-        refresher.addTarget(self, action: #selector(handleRefresh), for: .valueChanged)
-        collectionView.refreshControl = refresher
+        refresher.addTarget(self, action: #selector(hanldeRefresh), for: .valueChanged)
         
     }
     
     
     /// we remove all posts when we refresh, then we fetch all the posts again
-   @objc func handleRefresh() {
-    posts.removeAll()
-    fetchPosts()
+   @objc func hanldeRefresh() {
+    
+     posts.removeAll()
+     fetchPosts()
         
-    }
+  }
     
     //MARK: - API
 
     func fetchUser() {
         
-        UserService.fetchUser { user in
+        guard let currentUser = Auth.auth().currentUser?.uid else {return}
+        
+        UserService.fetchUser(withUser: currentUser) { user in
             self.user = user
-            
+
             print("the name of the user is \(user.name)")
             print("the user name is \(user.userName)")
         }
         
     }
     
-    func  fetchPosts() {
+    /// its only gonna execute the API call if post is equal to nill.
+    func fetchPosts() {
+        
+        // the point of a guard statement is to check a condition, if its met then it goes on to complete the required action, if not met then it return out of the function
+        guard post == nil else {return}
         
         PostsService.fetchPosts { post in
             self.posts = post
-            
-            print("did fetch posts")
             self.collectionView.refreshControl?.endRefreshing()
-            self.collectionView.reloadData()
+            self.checkIfUserLikedPost()
+        }
+    }
+    
+    /// we call this after the fetch post has been fetched to ensure the post array will be populated. thus we loop through this post array and check to see if each post has been liked by the user. if the post has been liked it will be true, if not it will be false.
+    func checkIfUserLikedPost() {
+        self.posts.forEach { post in
+            PostsService.checkIfUserLikedPost(post: post) { didLike in
+               
+                // we go through posts and we ask it to loop through all the posts again and return to us the posts that contains the same postIDs as the liked postIDs
+                if let index = self.posts.firstIndex(where: {$0.postId == post.postId}) {
+                    
+                    // for each post that meets the above predicate, we set didLike to it. because we get back true or false from the API calls.
+                    self.posts[index].didLike = didLike
+                }
+                
+            }
         }
         
     }
@@ -118,15 +146,29 @@ extension FeedController {
     
     override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         
-        return posts.count
+        // if post is nil is true, then we return the array of posts count, if false we return 1
+        return post == nil ? posts.count : 1
+
     }
     
     /// we define the cell here and we reuse the same cell over and over when old cells gets scrolled off screen, doing it like this helps us save memory.
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: reuseIdentifier, for: indexPath) as! FeedCell
+        cell.delegate = self
         
-        cell.viewModel = PostViewModel(post: posts[indexPath.row])
+        // we find our whether our post property contains a value, because its optional. if it does contain a value we make that value available through this let constant.
+        if let post = post {
+            
+            // if it does contain a value we initialise it our cell with that single value.
+            cell.viewModel = PostViewModel(post: post)
+            
+        }else {
+            
+            // else we initialise the array of posts.
+            cell.viewModel = PostViewModel(post: posts[indexPath.row])
+            
+        }
         
         return cell
     }
@@ -150,7 +192,71 @@ extension FeedController: UICollectionViewDelegateFlowLayout {
     }
     
 }
+
+//MARK: - FeedCellDelegate
+
+extension FeedController: FeedCellDelegate {
     
+    func cell(_ cell: FeedCell, wantsToShowProfileFor uid: String) {
+        
+        UserService.fetchUser(withUser: uid) { user in
+            let controller = ProfileController(user: user)
+            self.navigationController?.pushViewController(controller, animated: true)
+        }
+        
+    }
+    
+    
+    func cell(_ cell: FeedCell, wantsToShowCommentsFor Post: Posts) {
+        
+        let controller = CommentsController(posts: Post)
+        navigationController?.pushViewController(controller, animated: true)
+    }
+    
+    func cell(_ cell: FeedCell, didLike post: Posts) {
+        
+        // gains access to the tabBar and all its properties.
+        guard let tab = self.tabBarController as? MainTabBarController else {return}
+        guard let user = tab.user else {return}
+        
+        cell.viewModel?.posts.didLike.toggle()
+        
+        if post.didLike {
+            
+            PostsService.unlikePost(post: post) { error in
+                if let error = error {
+                    print("failed to delete \(error.localizedDescription)")
+                    return
+                }
+                
+                cell.likeButton.setImage(#imageLiteral(resourceName: "like_unselected"), for: .normal)
+                cell.likeButton.tintColor = .black
+                cell.viewModel?.posts.likes = post.likes - 1
+            }
+            
+        }else {
+            
+            PostsService.likePost(post: post) { error in
+                if let error = error {
+                    print("failed to like post \(error.localizedDescription)")
+                    return
+                }
+                
+                cell.likeButton.setImage(#imageLiteral(resourceName: "like_selected"), for: .normal)
+                cell.likeButton.tintColor = .red
+                cell.viewModel?.posts.likes = post.likes + 1
+                
+                NotificationsServices.uploadNotification(toUid: post.ownerUid, fromUser: user, type: .like, post: post)
+            }
+        }
+
+        
+    }
+    
+    
+    
+    
+}
     
     
 

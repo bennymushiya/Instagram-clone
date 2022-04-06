@@ -6,12 +6,18 @@
 //
 
 import UIKit
+import SDWebImage
 
 
 
 class ProfileCell: UICollectionViewCell {
     
     //MARK: - PROPERTIES
+    
+    var viewModel: ProfileCellViewModel? {
+        didSet{configureViewModel()}
+        
+    }
     
     private let postImageView: UIImageView = {
         let iv = UIImageView()
@@ -42,13 +48,23 @@ class ProfileCell: UICollectionViewCell {
     
     func configureUI() {
         
-        backgroundColor = .red
+        backgroundColor = .lightGray
         addSubview(postImageView)
         postImageView.fillSuperview()
         
         
     }
     
+    func configureViewModel() {
+        
+        guard let viewModels = viewModel else {return}
+        
+        postImageView.sd_setImage(with: viewModels.profileImage)
+        
+        print("didset worked")
+        
+        
+    }
   
     
     

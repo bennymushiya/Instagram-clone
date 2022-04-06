@@ -153,7 +153,6 @@ class LoginController: UIViewController {
             print("successfully logged user in")
         }
         
-        
     }
     
 }

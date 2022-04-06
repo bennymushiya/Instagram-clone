@@ -13,19 +13,34 @@ class InputTextView: UITextView {
     
     //MARK: - PROPERTIES
     
-    // when the view is loaded we will set the placeholderText to placeholder label
+    // when the view is loaded we will set the placeholderText to placeholder label.
     var placeHolderText: String? {
         
         didSet{ placeHolderLabel.text = placeHolderText}
         
     }
     
-    private let placeHolderLabel: UILabel = {
+    let placeHolderLabel: UILabel = {
         let label = UILabel()
         label.textColor = .lightGray
-        
         return label
     }()
+    
+    /// if placeHolderShouldCenter equals true, then the placeHolder label should be centered in the middle of the View, else should be centered at the top.
+    var placeHolderShouldCenter = true {
+        didSet {
+            
+            if placeHolderShouldCenter {
+                placeHolderLabel.anchor(left: leftAnchor, right: rightAnchor, paddingLeft: 8)
+                placeHolderLabel.centerX(inView: self)
+            }else {
+                
+                placeHolderLabel.anchor(top: topAnchor, left: leftAnchor, paddingTop: 6, paddingLeft: 8)
+                
+            }
+        }
+        
+    }
     
     //MARK: - LIFECYCLE
 

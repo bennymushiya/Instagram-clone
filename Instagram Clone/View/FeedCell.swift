@@ -8,22 +8,36 @@
 import UIKit
 import SDWebImage
 
+// the reason we create a delegate is because a collectionViewCell hasnt got the capability to present a new ViewController, only viewController can do that.
+protocol FeedCellDelegate: class {
+    
+    func cell(_ cell: FeedCell, wantsToShowCommentsFor Post: Posts)
+    func cell(_ cell: FeedCell, didLike post: Posts)
+    func cell(_ cell: FeedCell, wantsToShowProfileFor uid: String)
+}
 
 
 class FeedCell: UICollectionViewCell {
     
     //MARK: - PROPERTIES
     
+    weak var delegate: FeedCellDelegate?
+    
     var viewModel: PostViewModel? {
         didSet{configureViewModel()}
         
     }
     
-    private let profileImageView: UIImageView = {
+    private lazy var profileImageView: UIImageView = {
         let iv = UIImageView()
         iv.contentMode = .scaleToFill
         iv.clipsToBounds = true
         iv.isUserInteractionEnabled = true
+        
+        let tap = UITapGestureRecognizer(target: self, action: #selector(handleShowUserProfile))
+        iv.isUserInteractionEnabled = true
+        addGestureRecognizer(tap)
+        
         return iv
     }()
     
@@ -32,7 +46,7 @@ class FeedCell: UICollectionViewCell {
         let button = UIButton(type: .system)
         button.titleLabel?.font = UIFont.boldSystemFont(ofSize: 13)
         button.setTitleColor(.black, for: .normal)
-        button.addTarget(self, action: #selector(handleDidTapUserName), for: .touchUpInside)
+        button.addTarget(self, action: #selector(handleShowUserProfile), for: .touchUpInside)
         
         return button
     }()
@@ -47,10 +61,11 @@ class FeedCell: UICollectionViewCell {
         return iv
     }()
     
-    private lazy var likeButton: UIButton = {
+    lazy var likeButton: UIButton = {
         let button = UIButton(type: .system)
         button.setImage(#imageLiteral(resourceName: "like_unselected"), for: .normal)
         button.tintColor = .black
+        button.addTarget(self, action: #selector(handleDidTapLike), for: .touchUpInside)
         
         return button
     }()
@@ -59,6 +74,7 @@ class FeedCell: UICollectionViewCell {
         let button = UIButton(type: .system)
         button.setImage(#imageLiteral(resourceName: "comment"), for: .normal)
         button.tintColor = .black
+        button.addTarget(self, action: #selector(handleDidTapComment), for: .touchUpInside)
         
         return button
     }()
@@ -169,14 +185,38 @@ class FeedCell: UICollectionViewCell {
         userNameButton.setTitle(viewModels.userName, for: .normal)
         likesLabel.text = viewModels.likesLabelText
         
+        likeButton.setImage(viewModels.likeButtonImage, for: .normal)
+        likeButton.tintColor = viewModels.likeButtonTintColor
     }
     
-    @objc func handleDidTapUserName() {
+    @objc func handleShowUserProfile() {
         
+        guard let viewModels = viewModel else {return}
         
-        print("did tap button")
+        delegate?.cell(self, wantsToShowProfileFor: viewModels.ownerUid)
         
         
     }
+    
+    @objc func handleDidTapLike() {
+        
+        guard let viewModels = viewModel else {return}
+        
+        delegate?.cell(self, didLike: viewModels.posts)
+        
+    }
+    
+    
+    @objc func handleDidTapComment() {
+        
+        guard let viewModels = viewModel else {return}
+        
+        // every comment is asscoiated with a post thats why we need posts to get some info from the posts 
+        delegate?.cell(self, wantsToShowCommentsFor: viewModels.posts)
+        
+    }
+    
+  
+    
     
 }

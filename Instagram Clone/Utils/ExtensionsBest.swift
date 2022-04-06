@@ -46,6 +46,7 @@ extension UIButton {
     /// creates a input parameter function for an attrubuted button, so we can call it easily, same method as custom textfields.
     func attributedTitle(firstPart: String, secondPart: String) {
         let atts: [NSAttributedString.Key: Any] = [.foregroundColor: UIColor(white: 1, alpha: 0.87), .font: UIFont.systemFont(ofSize: 16)]
+        
         let attributedTitle = NSMutableAttributedString(string: "\(firstPart) ", attributes: atts)
         
         let boldAtts: [NSAttributedString.Key: Any] = [.foregroundColor: UIColor(white: 1, alpha: 0.87), .font: UIFont.boldSystemFont(ofSize: 16)]

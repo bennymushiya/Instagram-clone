@@ -35,7 +35,7 @@ struct User {
         self.uid = dictionary["uid"] as? String ?? ""
         
         // we give stats an initialise value, so it doesnt crash, whilst we wait for the API call to complete 
-        self.stats = UserStats(followers: 0, following: 0)
+        self.stats = UserStats(followers: 0, following: 0, posts: 0)
     }
     
 }
@@ -45,5 +45,6 @@ struct UserStats {
     
     let followers: Int
     let following: Int
+    let posts: Int
     
 }

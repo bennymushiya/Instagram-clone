@@ -126,6 +126,7 @@ class RegistrationController: UIViewController {
         
     }
     
+    
     @objc func textDidChange(sender: UITextField) {
         
         if sender == emailTextField {
@@ -135,6 +136,7 @@ class RegistrationController: UIViewController {
         }else if sender == PasswordTextField {
             
             viewModel.password = sender.text
+            
         }else if sender == userNameTextField {
             
             viewModel.userName = sender.text

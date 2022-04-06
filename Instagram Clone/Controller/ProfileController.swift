@@ -17,6 +17,9 @@ class ProfileController: UICollectionViewController {
     // API calls take some time, but viewControllers get loaded instantly, thus we call reload data to give the API call time to fetch the user and set the properties of the user.
     private var user: User
     
+    private var posts = [Posts]()
+    
+    
     //MARK: - LIFECYCLE
     
     init(user: User) {
@@ -34,6 +37,7 @@ class ProfileController: UICollectionViewController {
         configureUI()
         checkIfUserIsFollowed()
         fetchUserStats()
+        fetchPost()
         
     }
     
@@ -66,10 +70,21 @@ class ProfileController: UICollectionViewController {
         UserService.fetchUserStats(uid: user.uid) { stats in
             self.user.stats = stats
             self.collectionView.reloadData()
-            
-            print("stats is '\(stats)")
+    
         }
         
+    }
+    
+    func fetchPost() {
+        
+        PostsService.fetchPostsForUser(forUser: user.uid) { posts in
+            self.posts = posts
+            
+            print("fetch posts worked unoe")
+            print("fetch posts \(posts.map({$0.ownerImageUrl}))")
+
+            self.collectionView.reloadData()
+        }
     }
     
     //MARK: - ACTION
@@ -85,12 +100,15 @@ extension ProfileController {
     
     override func collectionView(_ collectionView: UICollectionView, numberOfItemsInSection section: Int) -> Int {
         
-        return 9
+        return posts.count 
     }
     
     override func collectionView(_ collectionView: UICollectionView, cellForItemAt indexPath: IndexPath) -> UICollectionViewCell {
         
         let cell = collectionView.dequeueReusableCell(withReuseIdentifier: cellIdenifier, for: indexPath) as! ProfileCell
+        
+        
+        cell.viewModel = ProfileCellViewModel(posts: posts[indexPath.row])
         
         return cell
     }
@@ -100,11 +118,9 @@ extension ProfileController {
         
         let header = collectionView.dequeueReusableSupplementaryView(ofKind: kind, withReuseIdentifier: headerIdenifier, for: indexPath) as! ProfileHeader
             
-     
         header.delegate = self
         header.viewModel = ProfileHeaderViewModel(user: user)
         
-            
         return header
         
     }
@@ -115,10 +131,15 @@ extension ProfileController {
 
 extension ProfileController {
     
-    
-    
+    // when pressed we create an instance of the feedController and we pass in the selected post to controller post and animate it.
+    override func collectionView(_ collectionView: UICollectionView, didSelectItemAt indexPath: IndexPath) {
+        
+        let controller = FeedController(collectionViewLayout: UICollectionViewFlowLayout())
+        controller.post = posts[indexPath.row]
+        navigationController?.pushViewController(controller, animated: true)
+        
+    }
 }
-
 
 //MARK: - UICollectionViewDelegateFlowLayout
 
@@ -157,6 +178,9 @@ extension ProfileController: ProfileHeaderDelegate {
     
     func header(_ profileHeader: ProfileHeader, didTapActionButtonForUser user: User) {
        
+        guard let tab = self.tabBarController as? MainTabBarController else {return}
+        guard let currentUser = tab.user else { return }
+        
         if user.isCurrentUser {
             
             print("show edit here")
@@ -173,6 +197,8 @@ extension ProfileController: ProfileHeaderDelegate {
             UserService.followUser(uid: user.uid) { error in
                 self.user.isFollowed = true
                 self.collectionView.reloadData()
+                
+                NotificationsServices.uploadNotification(toUid: user.uid, fromUser: currentUser, type: .follow)
             }
             
         }

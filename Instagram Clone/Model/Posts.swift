@@ -20,8 +20,10 @@ struct Posts {
     let ownerImageUrl: String
     let ownerUserName: String
     
+    var didLike = false
     
-    init(postId: String ,dictionary: [String : Any]) {
+    
+    init(postId: String, dictionary: [String : Any]) {
         
         // the string at the end is a defualt value incase nothing is there then we pass the nill value
         self.caption = dictionary["caption"] as? String ?? ""

@@ -13,7 +13,7 @@ class MainTabBarController: UITabBarController {
     
     //MARK: - PROPERTIES
     
-    private var user: User? {
+    var user: User? {
         didSet{
             
             guard let user = user else {return}
@@ -47,7 +47,9 @@ class MainTabBarController: UITabBarController {
     
     func fetchUser() {
         
-        UserService.fetchUser { user in
+        guard let currentUser = Auth.auth().currentUser?.uid else {return}
+        
+        UserService.fetchUser(withUser: currentUser) { user in
             self.user = user
         }
         
@@ -96,8 +98,9 @@ class MainTabBarController: UITabBarController {
     
     }
     
-    /// if the picker did finishing choosing a photo then we dismiss the picker, whilst dismissing the picker we also get the chosen image.
+    /// if the picker did finishing choosing a photo then we dismiss the picker, whilst dismissing the picker we also get the chosen image. and we pass the chosen image to the selectedImage property inside uploadImage Controller, we also pass the current user the the user property.
     func didFinishPickingMedia(_ picker: YPImagePicker) {
+        
         
         picker.didFinishPicking { items, _ in
             picker.dismiss(animated: true) {
@@ -149,7 +152,6 @@ extension MainTabBarController: AuthenicationCompleteDelegate {
 
 //MARK: - UITabBarControllerDelegate
 
-
 extension MainTabBarController: UITabBarControllerDelegate {
 
     /// helps us differentiate between each controller inside the tabController, by creating an index.
@@ -200,7 +202,7 @@ extension MainTabBarController: UploadPostControllerDelegate {
         guard let feed = feedNav.viewControllers.first as? FeedController else {return}
         
         //then we call handle refresh.
-        feed.handleRefresh()
+        feed.hanldeRefresh()
     }
     
     

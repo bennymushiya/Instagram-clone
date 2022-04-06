@@ -102,7 +102,6 @@ extension SearchController {
     
 }
 
-
 //MARK: - UITableViewDelegate
 
 extension SearchController {
@@ -134,11 +133,6 @@ extension SearchController: UISearchResultsUpdating {
         
         self.tableView.reloadData()
     }
-    
-    
-    
-    
-    
     
 }
     
